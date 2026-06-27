@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nobre Lar — Monitoramento de Combustível</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg2: #141720;
+    --bg3: #1c2030;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f2f8;
+    --text2: #8b91a8;
+    --text3: #555d75;
+    --accent: #f5a623;
+    --accent2: #e8891a;
+    --green: #2dd4a0;
+    --red: #f05454;
+    --blue: #5b8dee;
+    --purple: #9b72ea;
+    --card-r: 12px;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; }
+
+  /* SIDEBAR */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 240px; min-height: 100vh; background: var(--bg2);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+  }
+  .sidebar-logo {
+    padding: 28px 24px 20px; border-bottom: 1px solid var(--border);
+  }
+  .logo-mark {
+    font-family: var(--font-display); font-weight: 800; font-size: 20px;
+    color: var(--accent); letter-spacing: -0.5px;
+  }
+  .logo-sub { font-size: 11px; color: var(--text3); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 2px; }
+  .sidebar-nav { padding: 16px 12px; flex: 1; }
+  .nav-section { font-size: 10px; color: var(--text3); letter-spacing: 1.5px; text-transform: uppercase; padding: 0 12px; margin: 16px 0 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    border-radius: 8px; cursor: pointer; font-size: 13.5px; color: var(--text2);
+    transition: all 0.15s; margin-bottom: 2px; font-weight: 400;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  .nav-item.active { background: rgba(245,166,35,0.12); color: var(--accent); }
+  .nav-icon { width: 18px; text-align: center; font-size: 15px; }
+  .sidebar-footer { padding: 16px 24px; border-top: 1px solid var(--border); }
+  .import-btn {
+    width: 100%; padding: 10px; background: var(--accent); color: #0d0f14;
+    border: none; border-radius: 8px; font-family: var(--font-body); font-weight: 600;
+    font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    gap: 8px; transition: background 0.15s;
+  }
+  .import-btn:hover { background: var(--accent2); }
+
+  /* MAIN */
+  .main { margin-left: 240px; flex: 1; }
+  .topbar {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 0 32px; height: 60px; display: flex; align-items: center;
+    justify-content: space-between; position: sticky; top: 0; z-index: 50;
+  }
+  .topbar-title { font-family: var(--font-display); font-size: 17px; font-weight: 700; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .filter-group { display: flex; align-items: center; gap: 8px; }
+  select, input[type="date"] {
+    background: var(--bg3); border: 1px solid var(--border2); color: var(--text);
+    padding: 7px 12px; border-radius: 7px; font-family: var(--font-body); font-size: 13px;
+    cursor: pointer; outline: none;
+  }
+  select:focus, input[type="date"]:focus { border-color: var(--accent); }
+  .badge-live {
+    background: rgba(45,212,160,0.15); color: var(--green);
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+    letter-spacing: 0.5px; display: flex; align-items: center; gap: 5px;
+  }
+  .badge-live::before { content: ''; width: 6px; height: 6px; background: var(--green); border-radius: 50%; }
+
+  /* CONTENT */
+  .content { padding: 28px 32px; }
+  .section-title {
+    font-family: var(--font-display); font-size: 13px; font-weight: 700;
+    color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px;
+  }
+
+  /* METRIC CARDS */
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .metric-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--card-r);
+    padding: 20px 22px; position: relative; overflow: hidden;
+  }
+  .metric-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .metric-card.accent::before { background: var(--accent); }
+  .metric-card.green::before { background: var(--green); }
+  .metric-card.red::before { background: var(--red); }
+  .metric-card.blue::before { background: var(--blue); }
+  .metric-label { font-size: 11.5px; color: var(--text3); letter-spacing: 0.5px; margin-bottom: 8px; text-transform: uppercase; }
+  .metric-value { font-family: var(--font-mono); font-size: 28px; font-weight: 500; color: var(--text); }
+  .metric-sub { font-size: 12px; color: var(--text2); margin-top: 6px; }
+  .metric-delta {
+    display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px;
+    font-weight: 600; padding: 2px 7px; border-radius: 5px; margin-top: 6px;
+  }
+  .metric-delta.up { background: rgba(45,212,160,0.12); color: var(--green); }
+  .metric-delta.down { background: rgba(240,84,84,0.12); color: var(--red); }
+
+  /* GRID LAYOUTS */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px; }
+  .three-col { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 28px; }
+
+  /* CARDS */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--card-r); padding: 22px;
+  }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .card-title { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--text); }
+  .card-badge {
+    font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 5px;
+    background: rgba(255,255,255,0.06); color: var(--text2);
+  }
+
+  /* CHART CONTAINERS */
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* VEHICLE TABLE */
+  .vehicle-table { width: 100%; border-collapse: collapse; }
+  .vehicle-table th {
+    text-align: left; font-size: 11px; color: var(--text3); text-transform: uppercase;
+    letter-spacing: 0.8px; padding: 0 12px 10px; font-weight: 500; border-bottom: 1px solid var(--border);
+  }
+  .vehicle-table td { padding: 12px 12px; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); }
+  .vehicle-table tr:last-child td { border-bottom: none; }
+  .vehicle-table tr:hover td { background: rgba(255,255,255,0.025); }
+  .veh-type {
+    font-size: 10.5px; padding: 2px 8px; border-radius: 4px; font-weight: 600; letter-spacing: 0.3px;
+  }
+  .veh-type.moto { background: rgba(91,141,238,0.15); color: var(--blue); }
+  .veh-type.caminhao { background: rgba(245,166,35,0.15); color: var(--accent); }
+  .veh-type.carro { background: rgba(155,114,234,0.15); color: var(--purple); }
+  .alert-icon { color: var(--red); font-size: 14px; }
+  .km-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .km-bar-bg { flex: 1; height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+  .km-bar-fill { height: 100%; border-radius: 2px; }
+  .efficiency-badge {
+    font-family: var(--font-mono); font-size: 12px; padding: 2px 8px; border-radius: 5px;
+  }
+  .eff-good { background: rgba(45,212,160,0.12); color: var(--green); }
+  .eff-avg { background: rgba(245,166,35,0.12); color: var(--accent); }
+  .eff-bad { background: rgba(240,84,84,0.12); color: var(--red); }
+
+  /* RANKING */
+  .rank-list { list-style: none; }
+  .rank-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .rank-item:last-child { border-bottom: none; }
+  .rank-num { font-family: var(--font-mono); font-size: 12px; color: var(--text3); width: 20px; text-align: right; }
+  .rank-info { flex: 1; }
+  .rank-name { font-size: 13px; font-weight: 500; }
+  .rank-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .rank-val { font-family: var(--font-mono); font-size: 14px; font-weight: 500; }
+
+  /* WEEKLY TABLE */
+  .weekly-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .weekly-table th { color: var(--text3); font-weight: 500; padding: 6px 10px; text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .weekly-table th:first-child { text-align: left; }
+  .weekly-table td { padding: 9px 10px; border-top: 1px solid var(--border); text-align: right; font-family: var(--font-mono); font-size: 12px; }
+  .weekly-table td:first-child { text-align: left; font-family: var(--font-body); color: var(--text); font-size: 13px; }
+  .weekly-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 1000; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px;
+    padding: 32px; width: 480px; max-width: 95vw;
+  }
+  .modal-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .modal-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+  .upload-zone {
+    border: 2px dashed var(--border2); border-radius: 10px; padding: 40px;
+    text-align: center; cursor: pointer; transition: border-color 0.15s;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); }
+  .upload-icon { font-size: 32px; margin-bottom: 12px; }
+  .upload-text { font-size: 14px; color: var(--text2); margin-bottom: 4px; }
+  .upload-hint { font-size: 12px; color: var(--text3); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-primary {
+    flex: 1; padding: 11px; background: var(--accent); color: #0d0f14;
+    border: none; border-radius: 8px; font-family: var(--font-body); font-weight: 600;
+    font-size: 14px; cursor: pointer;
+  }
+  .btn-secondary {
+    flex: 1; padding: 11px; background: transparent; color: var(--text2);
+    border: 1px solid var(--border2); border-radius: 8px; font-family: var(--font-body);
+    font-weight: 500; font-size: 14px; cursor: pointer;
+  }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-secondary:hover { background: var(--bg3); }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; background: var(--bg3); padding: 4px; border-radius: 9px; margin-bottom: 20px; }
+  .tab {
+    flex: 1; padding: 8px; text-align: center; border-radius: 6px; cursor: pointer;
+    font-size: 13px; font-weight: 500; color: var(--text2); transition: all 0.15s;
+  }
+  .tab.active { background: var(--bg2); color: var(--text); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* STATUS BAR */
+  .status-bar {
+    background: var(--bg2); border-top: 1px solid var(--border);
+    padding: 8px 32px; display: flex; align-items: center; gap: 24px;
+    font-size: 11.5px; color: var(--text3);
+  }
+  .status-item { display: flex; align-items: center; gap: 5px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* FILE INPUT HIDDEN */
+  #fileInput { display: none; }
+
+  /* ALERT BANNERS */
+  .alert-banner {
+    background: rgba(240,84,84,0.08); border: 1px solid rgba(240,84,84,0.2);
+    border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px; font-size: 13px;
+  }
+  .alert-banner .alert-badge {
+    background: var(--red); color: white; font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 4px; flex-shrink: 0;
+  }
+
+  /* PRINT CLEAN */
+  @media print {
+    .sidebar, .topbar { display: none; }
+    .main { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark" style="font-size:16px">⬡ Nobre Lar</div>
+      <div class="logo-sub">Monitoramento de Combustível</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">Painel</div>
+      <div class="nav-item active" onclick="showView('dashboard')">
+        <span class="nav-icon">◈</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showView('frota')">
+        <span class="nav-icon">⊟</span> Frota Geral
+      </div>
+      <div class="nav-item" onclick="showView('comparativo')">
+        <span class="nav-icon">⇄</span> Comparativo
+      </div>
+      <div class="nav-section">Relatórios</div>
+      <div class="nav-item" onclick="showView('semanas')">
+        <span class="nav-icon">↔</span> Semana a Semana
+      </div>
+      <div class="nav-item" onclick="showView('semanal')">
+        <span class="nav-icon">◷</span> Semanal
+      </div>
+      <div class="nav-item" onclick="showView('abastecimentos')">
+        <span class="nav-icon">⛽</span> Abastecimentos
+      </div>
+      <div class="nav-item" onclick="showView('alertas')">
+        <span class="nav-icon">⚠</span> Alertas <span id="alert-count" style="background:var(--red);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px;"></span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="import-btn" onclick="openModal()">
+        ↑ Importar CSV
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="view-title">Dashboard</div>
+      <div class="topbar-right">
+        <div class="filter-group" style="flex-wrap:wrap;gap:6px;align-items:center">
+          <select id="filter-veiculo" onchange="applyFilters()">
+            <option value="">Todos os veículos</option>
+          </select>
+          <select id="filter-tipo" onchange="applyFilters()">
+            <option value="">Todos os tipos</option>
+            <option value="MOTO">Motos</option>
+            <option value="CAMINHÃO P">Caminhão P</option>
+            <option value="CAMINHÃO P NOVO">Caminhão P Novo</option>
+            <option value="CAMINHÃO G">Caminhão G</option>
+            <option value="CARRO">Carro</option>
+          </select>
+          <select id="filter-diasemana" onchange="applyFilters()">
+            <option value="">Qualquer dia da semana</option>
+            <option value="0">Domingo</option>
+            <option value="1">Segunda-feira</option>
+            <option value="2">Terça-feira</option>
+            <option value="3">Quarta-feira</option>
+            <option value="4">Quinta-feira</option>
+            <option value="5">Sexta-feira</option>
+            <option value="6">Sábado</option>
+          </select>
+          <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:5px 10px">
+            <span style="font-size:11px;color:var(--text3);white-space:nowrap">📅 De</span>
+            <input type="date" id="filter-data-ini" onchange="applyFilters()" style="border:none;background:transparent;padding:2px 2px;font-size:12px;color:var(--text);width:126px">
+            <span style="font-size:11px;color:var(--text3)">até</span>
+            <input type="date" id="filter-data-fim" onchange="applyFilters()" style="border:none;background:transparent;padding:2px 2px;font-size:12px;color:var(--text);width:126px">
+            <button onclick="clearDateFilter()" title="Limpar período" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:0 2px;line-height:1;opacity:0.7">✕</button>
+          </div>
+        </div>
+        <div class="badge-live">Ao vivo</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- DASHBOARD VIEW -->
+      <div id="view-dashboard">
+        <div id="alert-container"></div>
+
+        <div class="metrics-grid">
+          <div class="metric-card accent">
+            <div class="metric-label">KM Total Rodados</div>
+            <div class="metric-value" id="m-km-total">—</div>
+            <div class="metric-sub">Semana atual</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-label">Custo Total</div>
+            <div class="metric-value" id="m-custo-total">—</div>
+            <div class="metric-sub">Período monitorado</div>
+          </div>
+          <div class="metric-card blue">
+            <div class="metric-label">Litros Consumidos</div>
+            <div class="metric-value" id="m-litros-total">—</div>
+            <div class="metric-sub">Total abastecido</div>
+          </div>
+          <div class="metric-card red">
+            <div class="metric-label">Custo Médio/KM</div>
+            <div class="metric-value" id="m-custo-km">—</div>
+            <div class="metric-sub">Média geral da frota</div>
+          </div>
+        </div>
+
+        <div class="three-col">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">KM Rodados por Veículo</div>
+              <div class="card-badge" id="chart-period">Período atual</div>
+            </div>
+            <div class="chart-wrap" style="height:280px"><canvas id="chartKmVeiculo" role="img" aria-label="KM rodados por veículo no período"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Custo por Tipo</div>
+            </div>
+            <div class="chart-wrap" style="height:180px"><canvas id="chartTipo" role="img" aria-label="Custo por tipo de veículo"></canvas></div>
+            <div id="legend-tipo" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Custo/KM por Dia</div>
+            </div>
+            <div class="chart-wrap" style="height:200px"><canvas id="chartDiario" role="img" aria-label="Custo por km por dia"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Ranking de Consumo</div>
+              <span style="font-size:12px;color:var(--text3)">R$/km</span>
+            </div>
+            <ul class="rank-list" id="ranking-list"></ul>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Utilização por Dia da Semana</div>
+              <span style="font-size:12px;color:var(--text3)">KM total rodado</span>
+            </div>
+            <div class="chart-wrap" style="height:200px"><canvas id="chartDiaSemana" role="img" aria-label="KM total rodado por dia da semana"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Veículos Mais Ativos por Dia da Semana</div>
+            </div>
+            <div id="diasemana-ranking"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FROTA VIEW -->
+      <div id="view-frota" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Frota Cadastrada</div>
+            <div class="card-badge" id="frota-count"></div>
+          </div>
+          <table class="vehicle-table" id="tabela-frota">
+            <thead>
+              <tr>
+                <th>Placa</th>
+                <th>Modelo</th>
+                <th>Marca</th>
+                <th>Tipo</th>
+                <th>Ano</th>
+                <th>Consumo Ref. (km/l)</th>
+                <th>Combustível</th>
+                <th>Tanque (L)</th>
+                <th>Eficiência</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- COMPARATIVO VIEW -->
+      <div id="view-comparativo" style="display:none">
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <div class="card-title">Comparativo entre Veículos</div>
+          </div>
+
+          <!-- Veículos + Período -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px">
+            <!-- Col A -->
+            <div style="background:var(--bg3);border-radius:10px;padding:16px;border-left:3px solid var(--blue)">
+              <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Veículo A</div>
+              <select id="cmp-a" onchange="renderComparativo()" style="width:100%"></select>
+            </div>
+            <!-- Col B -->
+            <div style="background:var(--bg3);border-radius:10px;padding:16px;border-left:3px solid var(--green)">
+              <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Veículo B</div>
+              <select id="cmp-b" onchange="renderComparativo()" style="width:100%"></select>
+            </div>
+          </div>
+
+          <!-- Período de comparação -->
+          <div style="background:var(--bg3);border-radius:10px;padding:16px;margin-bottom:16px">
+            <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">📅 Período de comparação</div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;flex:1;min-width:280px">
+                <span style="font-size:11px;color:var(--text3);white-space:nowrap">De</span>
+                <input type="date" id="cmp-data-ini" onchange="renderComparativo()" style="border:none;background:transparent;padding:2px 2px;font-size:13px;color:var(--text);flex:1">
+                <span style="font-size:11px;color:var(--text3)">até</span>
+                <input type="date" id="cmp-data-fim" onchange="renderComparativo()" style="border:none;background:transparent;padding:2px 2px;font-size:13px;color:var(--text);flex:1">
+                <button onclick="clearCmpDateFilter()" title="Limpar período" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:0 2px;opacity:0.7">✕</button>
+              </div>
+              <!-- Atalhos de período -->
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button onclick="setCmpPeriod(3)"  style="background:var(--bg2);border:1px solid var(--border2);color:var(--text2);padding:5px 10px;border-radius:6px;font-size:11.5px;cursor:pointer;font-family:var(--font-body)">Últimos 3 dias</button>
+                <button onclick="setCmpPeriod(7)"  style="background:var(--bg2);border:1px solid var(--border2);color:var(--text2);padding:5px 10px;border-radius:6px;font-size:11.5px;cursor:pointer;font-family:var(--font-body)">7 dias</button>
+                <button onclick="setCmpPeriod(14)" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text2);padding:5px 10px;border-radius:6px;font-size:11.5px;cursor:pointer;font-family:var(--font-body)">14 dias</button>
+                <button onclick="clearCmpDateFilter()" style="background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.3);color:var(--accent);padding:5px 10px;border-radius:6px;font-size:11.5px;cursor:pointer;font-family:var(--font-body)">Tudo</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="cmp-period-info" style="font-size:12px;color:var(--text3);margin-bottom:14px"></div>
+          <div id="cmp-cards" style="display:grid;grid-template-columns:1fr 1fr;gap:20px"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">KM Diário Comparado</div></div>
+          <div class="chart-wrap" style="height:250px"><canvas id="chartCmp" role="img" aria-label="Comparativo KM diário entre dois veículos"></canvas></div>
+        </div>
+      </div>
+
+      <!-- SEMANAS VIEW -->
+      <div id="view-semanas" style="display:none">
+
+        <!-- Header + week selector -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+          <div>
+            <div class="section-title" style="margin-bottom:4px">Semana a Semana</div>
+            <div style="font-size:13px;color:var(--text2)" id="sw-subtitle">Seg → Sáb · KM, consumo e custo</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--text3)">Semana:</span>
+            <select id="sw-select-semana" onchange="renderSemanas()" style="min-width:200px"></select>
+          </div>
+        </div>
+
+        <!-- KPI strip: 5 cards semana atual vs anterior -->
+        <div id="sw-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px"></div>
+
+        <!-- KM diário lado a lado (linha do tempo) -->
+        <div class="card" style="margin-bottom:24px">
+          <div class="card-header">
+            <div class="card-title">KM Total Diário — Semana Atual vs Anterior</div>
+            <div id="sw-week-label" class="card-badge"></div>
+          </div>
+          <div class="chart-wrap" style="height:240px"><canvas id="swChartOverlay"></canvas></div>
+        </div>
+
+        <!-- Caminhões: bloco completo -->
+        <div class="section-title">🚛 Caminhões</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">KM Rodados — Atual vs Anterior</div></div>
+            <div class="chart-wrap" style="height:210px"><canvas id="swChartCaminhoes"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Litros Consumidos — Atual vs Anterior</div></div>
+            <div class="chart-wrap" style="height:210px"><canvas id="swChartCaminhoesLitros"></canvas></div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:24px">
+          <div class="card-header"><div class="card-title">Detalhamento de Caminhões</div></div>
+          <div id="sw-caminhoes-detail"></div>
+        </div>
+
+        <!-- Motos: bloco completo -->
+        <div class="section-title">🏍 Motos</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">KM Rodados — Atual vs Anterior</div></div>
+            <div class="chart-wrap" style="height:210px"><canvas id="swChartMotos"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Litros Consumidos — Atual vs Anterior</div></div>
+            <div class="chart-wrap" style="height:210px"><canvas id="swChartMotosLitros"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Tabela completa por veículo -->
+        <div class="section-title">Todos os Veículos</div>
+        <div class="card" style="margin-bottom:24px">
+          <div class="card-header">
+            <div class="card-title">Comparativo por Veículo — Seg a Sáb</div>
+            <span style="font-size:11px;color:var(--text3)">▲ melhorou &nbsp;▼ piorou</span>
+          </div>
+          <table class="vehicle-table" id="sw-table">
+            <thead>
+              <tr>
+                <th>Veículo</th>
+                <th>Tipo</th>
+                <th style="text-align:right">KM Atual</th>
+                <th style="text-align:right">KM Ant.</th>
+                <th style="text-align:right">Δ KM</th>
+                <th style="text-align:right">Méd/dia Atual</th>
+                <th style="text-align:right">Méd/dia Ant.</th>
+                <th style="text-align:right">Dias Ativos</th>
+                <th style="text-align:right">Litros Atual</th>
+                <th style="text-align:right">Δ Litros</th>
+                <th style="text-align:right">Custo Atual</th>
+                <th style="text-align:right">R$/km Atual</th>
+                <th style="text-align:right">Δ R$/km</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SEMANAL VIEW -->
+      <div id="view-semanal" style="display:none">
+        <div class="section-title">Relatório Semanal — Médias e Totais</div>
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <div class="card-title">Média Semanal por Veículo</div>
+          </div>
+          <table class="weekly-table" id="tabela-semanal">
+            <thead>
+              <tr>
+                <th>Veículo</th>
+                <th>Tipo</th>
+                <th>KM Total</th>
+                <th>Média KM/dia</th>
+                <th>Litros</th>
+                <th>Custo Total</th>
+                <th>R$/KM méd.</th>
+                <th>Dias Ativos</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">KM Médio Diário vs Meta</div></div>
+          <div class="chart-wrap" style="height:260px"><canvas id="chartSemanal" role="img" aria-label="Média diária de km por veículo comparado à meta"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ABASTECIMENTOS VIEW -->
+      <div id="view-abastecimentos" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+          <div>
+            <div class="section-title" style="margin-bottom:4px">Abastecimentos por Veículo</div>
+            <div style="font-size:13px;color:var(--text2)">Dias com abastecimento registrado e intervalo entre eles</div>
+          </div>
+          <select id="abast-filter-veiculo" onchange="renderAbastecimentos()" style="min-width:200px">
+            <option value="">Todos os veículos</option>
+          </select>
+        </div>
+
+        <!-- KPI summary -->
+        <div id="abast-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px"></div>
+
+        <!-- Interval chart -->
+        <div class="card" style="margin-bottom:24px">
+          <div class="card-header">
+            <div class="card-title">Intervalo Médio Entre Abastecimentos (dias)</div>
+            <span style="font-size:12px;color:var(--text3)">Menor = mais frequente</span>
+          </div>
+          <div class="chart-wrap" style="height:240px"><canvas id="chartIntervalo"></canvas></div>
+        </div>
+
+        <!-- Per vehicle detail cards -->
+        <div id="abast-detail"></div>
+      </div>
+
+      <!-- ALERTAS VIEW -->
+      <div id="view-alertas" style="display:none">
+        <div class="section-title">Alertas de Consumo Fora do Padrão</div>
+        <div id="alertas-lista"></div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-item"><div class="status-dot" style="background:var(--green)"></div> Sistema Online</div>
+      <div class="status-item" id="status-records">—</div>
+      <div class="status-item" id="status-vehicles">—</div>
+      <div class="status-item" id="status-period">—</div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL IMPORT -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">Importar Planilha CSV</div>
+    <div class="modal-sub">Importe um arquivo CSV com os dados de abastecimento. O sistema detecta automaticamente o formato e adiciona os novos registros.</div>
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)">
+      <div class="upload-icon">📂</div>
+      <div class="upload-text" id="upload-text">Clique ou arraste o arquivo CSV aqui</div>
+      <div class="upload-hint">Formato: mesma estrutura da planilha base</div>
+    </div>
+    <input type="file" id="fileInput" accept=".csv" onchange="handleFile(event)">
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" id="btn-import" onclick="importData()" disabled>Importar Dados</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────
+const FROTA_BASE = [
+  { placa:'OSL 0953', modelo:'ACELLO 815 156 CV', marca:'MERCEDES BENZ', tipo:'CAMINHÃO P',    ano:'2013',      kml:6,   comb:'DIESEL S10', preco:8.4,  tanque:150  },
+  { placa:'RIC 2E16', modelo:'(N) ACELLO 815 156 CV', marca:'MERCEDES BENZ', tipo:'CAMINHÃO P NOVO', ano:'2021', kml:7,  comb:'DIESEL S10', preco:8.4,  tanque:150  },
+  { placa:'NQZ 3273', modelo:'HR 100 CV',          marca:'HYUNDAI',       tipo:'CARRO',         ano:'2010/2011', kml:8.5, comb:'DIESEL S11', preco:8.4,  tanque:100  },
+  { placa:'POW 2715', modelo:'TITAN 160 START',    marca:'HONDA',         tipo:'MOTO',          ano:'2019',      kml:40,  comb:'G. COMUM',   preco:7.6,  tanque:14.2 },
+  { placa:'PMR 2315', modelo:'FAN 160 CC',         marca:'HONDA',         tipo:'MOTO',          ano:'2017/2017', kml:41,  comb:'G. COMUM',   preco:7.6,  tanque:16.1 },
+  { placa:'OCE 4488', modelo:'FAN 125 CC',         marca:'HONDA',         tipo:'MOTO',          ano:'2011/2012', kml:38,  comb:'G. COMUM',   preco:7.6,  tanque:16.1 },
+  { placa:'TIL 0J05', modelo:'CF FAC 310',         marca:'DAF 310',       tipo:'CAMINHÃO G',    ano:'2024',      kml:3.5, comb:'DIESEL S10', preco:8.4,  tanque:620  },
+];
+
+const RAW_RECORDS = [
+  // ── Semana 18–23 Mai ────────────────────────────────────────────────
+  { data:'18/05/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4733.9,   kmRodados:0.9,   litros:0,       valor:0,      custoPorKm:0.18   },
+  { data:'18/05/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:88472,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'18/05/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97005,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'18/05/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:115254,  kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'18/05/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223599,   kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'18/05/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:59604,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'19/05/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4784,     kmRodados:50.1,  litros:14,      valor:108,    custoPorKm:10.02  },
+  { data:'19/05/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:88531,    kmRodados:59,    litros:0,       valor:0,      custoPorKm:10.94  },
+  { data:'19/05/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97078,    kmRodados:73,    litros:12.145,  valor:92.3,   custoPorKm:13.87  },
+  { data:'19/05/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:115409,  kmRodados:154.8, litros:0,       valor:0,      custoPorKm:185.76 },
+  { data:'19/05/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223627,   kmRodados:27.5,  litros:0,       valor:0,      custoPorKm:38.5   },
+  { data:'19/05/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:59604,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'20/05/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4823,     kmRodados:39,    litros:0,       valor:0,      custoPorKm:7.8    },
+  { data:'20/05/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:88587,    kmRodados:56,    litros:0,       valor:0,      custoPorKm:10.38  },
+  { data:'20/05/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97141,    kmRodados:63,    litros:0,       valor:0,      custoPorKm:11.97  },
+  { data:'20/05/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:115559.1,kmRodados:150.2, litros:109.52,  valor:919.97, custoPorKm:180.24 },
+  { data:'20/05/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223626.7, kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'20/05/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:60371,    kmRodados:767,   litros:0,       valor:0,      custoPorKm:1840.8 },
+  { data:'21/05/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4884.9,   kmRodados:61.9,  litros:0,       valor:0,      custoPorKm:12.38  },
+  { data:'21/05/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:88631,    kmRodados:44,    litros:0,       valor:0,      custoPorKm:8.16   },
+  { data:'21/05/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97218,    kmRodados:77,    litros:0,       valor:0,      custoPorKm:14.63  },
+  { data:'21/05/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:115651.3,kmRodados:92.2,  litros:0,       valor:0,      custoPorKm:110.64 },
+  { data:'21/05/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223657,   kmRodados:30.3,  litros:0,       valor:0,      custoPorKm:42.42  },
+  { data:'21/05/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:60371,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'22/05/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4895.6,   kmRodados:10.7,  litros:0,       valor:0,      custoPorKm:2.14   },
+  { data:'22/05/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:88689,    kmRodados:58,    litros:0,       valor:0,      custoPorKm:10.75  },
+  { data:'22/05/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97254,    kmRodados:36,    litros:0,       valor:0,      custoPorKm:6.84   },
+  { data:'22/05/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:115654.6,kmRodados:3.3,   litros:0,       valor:0,      custoPorKm:3.96   },
+  { data:'22/05/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223677,   kmRodados:20,    litros:0,       valor:0,      custoPorKm:28     },
+  { data:'22/05/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:60371,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'23/05/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4943,     kmRodados:47.4,  litros:0,       valor:0,      custoPorKm:9.48   },
+  { data:'23/05/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:88736,    kmRodados:47,    litros:0,       valor:0,      custoPorKm:8.71   },
+  { data:'23/05/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97320,    kmRodados:66,    litros:0,       valor:0,      custoPorKm:12.54  },
+  { data:'23/05/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:115684.7,kmRodados:30.1,  litros:0,       valor:0,      custoPorKm:36.12  },
+  { data:'23/05/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223705.3, kmRodados:28.3,  litros:0,       valor:0,      custoPorKm:39.62  },
+  { data:'23/05/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:61119,    kmRodados:748,   litros:0,       valor:0,      custoPorKm:1795.2 },
+  // ── Semana 25–30 Mai ────────────────────────────────────────────────
+  { data:'25/05/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4944,     kmRodados:1,     litros:0,       valor:0,      custoPorKm:0.2    },
+  { data:'25/05/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:88761,    kmRodados:25,    litros:0,       valor:0,      custoPorKm:4.63   },
+  { data:'25/05/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97353,    kmRodados:33,    litros:0,       valor:0,      custoPorKm:6.27   },
+  { data:'25/05/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:115684.7,kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'25/05/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223705.3, kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'25/05/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:61119,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'26/05/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4944,     kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'26/05/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:88801,    kmRodados:40,    litros:0,       valor:0,      custoPorKm:7.41   },
+  { data:'26/05/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97410,    kmRodados:57,    litros:0,       valor:0,      custoPorKm:10.83  },
+  { data:'26/05/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:115778.3,kmRodados:93.6,  litros:0,       valor:0,      custoPorKm:112.32 },
+  { data:'26/05/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223722.9, kmRodados:17.6,  litros:0,       valor:0,      custoPorKm:24.64  },
+  { data:'26/05/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:61119,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'27/05/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4946.9,   kmRodados:2.9,   litros:0,       valor:0,      custoPorKm:0.58   },
+  { data:'27/05/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:88861,    kmRodados:60,    litros:0,       valor:0,      custoPorKm:11.12  },
+  { data:'27/05/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97502,    kmRodados:92,    litros:0,       valor:0,      custoPorKm:17.48  },
+  { data:'27/05/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:115828.2,kmRodados:49.9,  litros:0,       valor:0,      custoPorKm:59.88  },
+  { data:'27/05/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223739,   kmRodados:16.1,  litros:0,       valor:0,      custoPorKm:22.54  },
+  { data:'27/05/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:61886,    kmRodados:767,   litros:0,       valor:0,      custoPorKm:1840.8 },
+  { data:'28/05/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4980,     kmRodados:33.1,  litros:0,       valor:0,      custoPorKm:6.62   },
+  { data:'28/05/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:88912,    kmRodados:51,    litros:0,       valor:0,      custoPorKm:9.45   },
+  { data:'28/05/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97549,    kmRodados:47,    litros:0,       valor:0,      custoPorKm:8.93   },
+  { data:'28/05/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:115940,  kmRodados:111.8, litros:0,       valor:0,      custoPorKm:134.16 },
+  { data:'28/05/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223748.8, kmRodados:9.8,   litros:0,       valor:0,      custoPorKm:13.72  },
+  { data:'28/05/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:61886,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'29/05/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4996,     kmRodados:16,    litros:0,       valor:0,      custoPorKm:3.2    },
+  { data:'29/05/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:88962,    kmRodados:50,    litros:0,       valor:0,      custoPorKm:9.27   },
+  { data:'29/05/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97582,    kmRodados:33,    litros:14.985,  valor:113.89, custoPorKm:6.27   },
+  { data:'29/05/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116028.5,kmRodados:88.5,  litros:0,       valor:0,      custoPorKm:106.2  },
+  { data:'29/05/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223782.8, kmRodados:34,    litros:0,       valor:0,      custoPorKm:47.6   },
+  { data:'29/05/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:62736,    kmRodados:850,   litros:0,       valor:0,      custoPorKm:2040   },
+  { data:'30/05/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4996,     kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'30/05/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:89043,    kmRodados:81,    litros:12.04,   valor:91.5,   custoPorKm:15.01  },
+  { data:'30/05/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97668,    kmRodados:86,    litros:0,       valor:0,      custoPorKm:16.34  },
+  { data:'30/05/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116150,  kmRodados:121.5, litros:0,       valor:0,      custoPorKm:145.8  },
+  { data:'30/05/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223800.5, kmRodados:17.7,  litros:0,       valor:0,      custoPorKm:24.78  },
+  { data:'30/05/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:62736,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  // ── Semana 01–05 Jun ────────────────────────────────────────────────
+  { data:'01/06/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:4996.1,   kmRodados:0.1,   litros:0,       valor:0,      custoPorKm:0.02   },
+  { data:'01/06/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:89084,    kmRodados:41,    litros:0,       valor:0,      custoPorKm:7.6    },
+  { data:'01/06/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97693,    kmRodados:25,    litros:0,       valor:0,      custoPorKm:4.75   },
+  { data:'01/06/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116153.1,kmRodados:3.1,   litros:98.502,  valor:827.42, custoPorKm:3.72   },
+  { data:'01/06/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223815.3, kmRodados:14.8,  litros:116.367, valor:977.48, custoPorKm:20.72  },
+  { data:'01/06/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:62736,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'01/06/2026', veiculo:'HR 100 CV',            tipo:'CARRO',         kmAtual:219481,   kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'02/06/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:5031.6,   kmRodados:35.5,  litros:0,       valor:0,      custoPorKm:7.1    },
+  { data:'02/06/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:89137,    kmRodados:53,    litros:0,       valor:0,      custoPorKm:9.82   },
+  { data:'02/06/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97708,    kmRodados:15,    litros:0,       valor:0,      custoPorKm:2.85   },
+  { data:'02/06/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116263.4,kmRodados:110.3, litros:0,       valor:0,      custoPorKm:132.36 },
+  { data:'02/06/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:223930.5, kmRodados:115.2, litros:0,       valor:0,      custoPorKm:161.28 },
+  { data:'02/06/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:63484,    kmRodados:748,   litros:0,       valor:0,      custoPorKm:1795.2 },
+  { data:'02/06/2026', veiculo:'HR 100 CV',            tipo:'CARRO',         kmAtual:219531,   kmRodados:50,    litros:0,       valor:0,      custoPorKm:49.41  },
+  { data:'03/06/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:5043,     kmRodados:11.4,  litros:0,       valor:0,      custoPorKm:2.28   },
+  { data:'03/06/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:89202,    kmRodados:65,    litros:0,       valor:0,      custoPorKm:12.05  },
+  { data:'03/06/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97771,    kmRodados:63,    litros:0,       valor:0,      custoPorKm:11.97  },
+  { data:'03/06/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116280,  kmRodados:16.6,  litros:0,       valor:0,      custoPorKm:19.92  },
+  { data:'03/06/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:224073,   kmRodados:142.5, litros:0,       valor:0,      custoPorKm:199.5  },
+  { data:'03/06/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:63484,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'03/06/2026', veiculo:'HR 100 CV',            tipo:'CARRO',         kmAtual:219598,   kmRodados:67,    litros:28.597,  valor:240.21, custoPorKm:66.21  },
+  { data:'05/06/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:5055,     kmRodados:12,    litros:0,       valor:0,      custoPorKm:2.4    },
+  { data:'05/06/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:89238,    kmRodados:36,    litros:0,       valor:0,      custoPorKm:6.67   },
+  { data:'05/06/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97837,    kmRodados:66,    litros:0,       valor:0,      custoPorKm:12.54  },
+  { data:'05/06/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116311.2,kmRodados:31.2,  litros:0,       valor:0,      custoPorKm:37.44  },
+  { data:'05/06/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:224112,   kmRodados:39,    litros:0,       valor:0,      custoPorKm:54.6   },
+  { data:'05/06/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:63565,    kmRodados:81,    litros:0,       valor:0,      custoPorKm:194.4  },
+  { data:'05/06/2026', veiculo:'HR 100 CV',            tipo:'CARRO',         kmAtual:219667,   kmRodados:69,    litros:0,       valor:0,      custoPorKm:68.19  },
+  // ── Semana 08–13 Jun ────────────────────────────────────────────────
+  { data:'08/06/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:5149,     kmRodados:94,    litros:10.402,  valor:79.06,  custoPorKm:18.8   },
+  { data:'08/06/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:89277,    kmRodados:39,    litros:0,       valor:0,      custoPorKm:7.23   },
+  { data:'08/06/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:97915,    kmRodados:78,    litros:0,       valor:0,      custoPorKm:14.82  },
+  { data:'08/06/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116460.3,kmRodados:149.1, litros:0,       valor:0,      custoPorKm:178.92 },
+  { data:'08/06/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:224246.2, kmRodados:134.2, litros:0,       valor:0,      custoPorKm:187.88 },
+  { data:'08/06/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:63565,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'08/06/2026', veiculo:'HR 100 CV',            tipo:'CARRO',         kmAtual:219740,   kmRodados:73,    litros:0,       valor:0,      custoPorKm:72.14  },
+  { data:'09/06/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:5181,     kmRodados:32,    litros:0,       valor:0,      custoPorKm:6.4    },
+  { data:'09/06/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:89295,    kmRodados:18,    litros:0,       valor:0,      custoPorKm:3.34   },
+  { data:'09/06/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:98018,    kmRodados:103,   litros:0,       valor:0,      custoPorKm:19.57  },
+  { data:'09/06/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116460.5,kmRodados:0.2,   litros:0,       valor:0,      custoPorKm:0.24   },
+  { data:'09/06/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:224253.3, kmRodados:7.1,   litros:0,       valor:0,      custoPorKm:9.94   },
+  { data:'09/06/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:64399,    kmRodados:834,   litros:0,       valor:0,      custoPorKm:2001.6 },
+  { data:'09/06/2026', veiculo:'HR 100 CV',            tipo:'CARRO',         kmAtual:219783,   kmRodados:43,    litros:0,       valor:0,      custoPorKm:42.49  },
+  { data:'10/06/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:5237,     kmRodados:56,    litros:0,       valor:0,      custoPorKm:11.2   },
+  { data:'10/06/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:89346,    kmRodados:51,    litros:0,       valor:0,      custoPorKm:9.45   },
+  { data:'10/06/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:98062,    kmRodados:44,    litros:13.57,   valor:103.13, custoPorKm:8.36   },
+  { data:'10/06/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116474,  kmRodados:13.5,  litros:0,       valor:0,      custoPorKm:16.2   },
+  { data:'10/06/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:224279.9, kmRodados:26.6,  litros:0,       valor:0,      custoPorKm:37.24  },
+  { data:'10/06/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:64455,    kmRodados:56,    litros:0,       valor:0,      custoPorKm:134.4  },
+  { data:'10/06/2026', veiculo:'HR 100 CV',            tipo:'CARRO',         kmAtual:219812,   kmRodados:29,    litros:44.655,  valor:375.1,  custoPorKm:28.66  },
+  { data:'11/06/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:52662,    kmRodados:3,     litros:0,       valor:0,      custoPorKm:0.6    },
+  { data:'11/06/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:89407,    kmRodados:61,    litros:0,       valor:0,      custoPorKm:11.31  },
+  { data:'11/06/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:98093,    kmRodados:31,    litros:0,       valor:0,      custoPorKm:5.89   },
+  { data:'11/06/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116613,  kmRodados:139,   litros:0,       valor:0,      custoPorKm:166.8  },
+  { data:'11/06/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:224298,   kmRodados:18.1,  litros:0,       valor:0,      custoPorKm:25.34  },
+  { data:'11/06/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:64455,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'11/06/2026', veiculo:'HR 100 CV',            tipo:'CARRO',         kmAtual:219840,   kmRodados:28,    litros:0,       valor:0,      custoPorKm:27.67  },
+  { data:'12/06/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:53495,    kmRodados:833,   litros:0,       valor:0,      custoPorKm:166.6  },
+  { data:'12/06/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:89423,    kmRodados:16,    litros:0,       valor:0,      custoPorKm:2.97   },
+  { data:'12/06/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:98157,    kmRodados:64,    litros:0,       valor:0,      custoPorKm:12.16  },
+  { data:'12/06/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116705,  kmRodados:92,    litros:0,       valor:0,      custoPorKm:110.4  },
+  { data:'12/06/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:224310,   kmRodados:12,    litros:101.746, valor:854.67, custoPorKm:16.8   },
+  { data:'12/06/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:65176,    kmRodados:721,   litros:0,       valor:0,      custoPorKm:1730.4 },
+  { data:'12/06/2026', veiculo:'HR 100 CV',            tipo:'CARRO',         kmAtual:219850,   kmRodados:10,    litros:0,       valor:0,      custoPorKm:9.88   },
+  { data:'13/06/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:53781,    kmRodados:286,   litros:0,       valor:0,      custoPorKm:57.2   },
+  { data:'13/06/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:89442,    kmRodados:19,    litros:0,       valor:0,      custoPorKm:3.52   },
+  { data:'13/06/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:98217,    kmRodados:60,    litros:0,       valor:0,      custoPorKm:11.4   },
+  { data:'13/06/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116718,  kmRodados:13,    litros:0,       valor:0,      custoPorKm:15.6   },
+  { data:'13/06/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:224310,   kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'13/06/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:65177,    kmRodados:1,     litros:0,       valor:0,      custoPorKm:2.4    },
+  { data:'13/06/2026', veiculo:'HR 100 CV',            tipo:'CARRO',         kmAtual:219890,   kmRodados:40,    litros:0,       valor:0,      custoPorKm:39.53  },
+  // ── Semana 15 Jun (semana atual) ────────────────────────────────────
+  { data:'15/06/2026', veiculo:'FAN 125 CC',           tipo:'MOTO',          kmAtual:53794,    kmRodados:13,    litros:0,       valor:0,      custoPorKm:2.6    },
+  { data:'15/06/2026', veiculo:'FAN 160 CC',           tipo:'MOTO',          kmAtual:89452,    kmRodados:10,    litros:0,       valor:0,      custoPorKm:1.85   },
+  { data:'15/06/2026', veiculo:'TITAN 160 START',      tipo:'MOTO',          kmAtual:98217,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'15/06/2026', veiculo:'(N) ACELLO 815 156 CV',tipo:'CAMINHÃO P NOVO',kmAtual:116747.6,kmRodados:29.6,  litros:0,       valor:0,      custoPorKm:35.52  },
+  { data:'15/06/2026', veiculo:'ACELLO 815 156 CV',    tipo:'CAMINHÃO P',    kmAtual:224611.9, kmRodados:301.9, litros:0,       valor:0,      custoPorKm:422.66 },
+  { data:'15/06/2026', veiculo:'CF FAC 310',           tipo:'CAMINHÃO G',    kmAtual:65177,    kmRodados:0,     litros:0,       valor:0,      custoPorKm:0      },
+  { data:'15/06/2026', veiculo:'HR 100 CV',            tipo:'CARRO',         kmAtual:219932,   kmRodados:42,    litros:0,       valor:0,      custoPorKm:41.51  },
+];
+
+let allRecords = [...RAW_RECORDS];
+let charts = {};
+let pendingCSV = null;
+let currentView = 'dashboard';
+let filterVeiculo = '';
+let filterTipo = '';
+let filterDataIni = null;
+let filterDataFim = null;
+let filterDiaSemana = '';
+
+// ─── COLORS ──────────────────────────────────────────────────────────
+const COLORS = ['#f5a623','#5b8dee','#2dd4a0','#f05454','#9b72ea','#e87db7','#4fc3c3'];
+let VEICULOS = [...new Set(allRecords.map(r => r.veiculo))];
+
+// ─── INIT ─────────────────────────────────────────────────────────────
+function init() {
+  populateFilters();
+  updateAll();
+}
+
+function populateFilters() {
+  const sel = document.getElementById('filter-veiculo');
+  const selA = document.getElementById('cmp-a');
+  const selB = document.getElementById('cmp-b');
+  const selAbast = document.getElementById('abast-filter-veiculo');
+
+  [sel, selA, selB, selAbast].forEach(s => { while(s.options.length > 1) s.remove(1); });
+
+  VEICULOS.forEach((v) => {
+    [sel, selA, selB, selAbast].forEach(s => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v;
+      s.appendChild(o);
+    });
+  });
+  if (VEICULOS.length > 1) { selB.value = VEICULOS[1]; }
+
+  // Set default date range to full data range
+  const dias = [...new Set(allRecords.map(r => r.data))].sort((a,b) => parseDate(a)-parseDate(b));
+  if (dias.length) {
+    const ini = toInputDate(dias[0]);
+    const fim = toInputDate(dias[dias.length-1]);
+    const elIni = document.getElementById('filter-data-ini');
+    const elFim = document.getElementById('filter-data-fim');
+    // Always update min/max; set value only if empty
+    elIni.min = ini; elIni.max = fim;
+    elFim.min = ini; elFim.max = fim;
+    if (!elIni.value) elIni.value = ini;
+    if (!elFim.value) elFim.value = fim;
+    // Comparativo — always update bounds, set value only if empty
+    const cmpIni = document.getElementById('cmp-data-ini');
+    const cmpFim = document.getElementById('cmp-data-fim');
+    cmpIni.min = ini; cmpIni.max = fim;
+    cmpFim.min = ini; cmpFim.max = fim;
+    if (!cmpIni.value) cmpIni.value = ini;
+    if (!cmpFim.value) cmpFim.value = fim;
+  }
+}
+
+// dd/MM/yyyy → yyyy-MM-dd for input[type=date]
+function toInputDate(ddmmyyyy) {
+  const [d,m,y] = ddmmyyyy.split('/');
+  return `${y}-${m}-${d}`;
+}
+// yyyy-MM-dd → Date
+function inputToDate(val) {
+  if (!val) return null;
+  const [y,m,d] = val.split('-');
+  return new Date(+y, +m-1, +d);
+}
+
+function filteredRecords() {
+  return allRecords.filter(r => {
+    if (filterVeiculo && r.veiculo !== filterVeiculo) return false;
+    if (filterTipo && r.tipo !== filterTipo) return false;
+    const rDate = parseDate(r.data);
+    if (filterDataIni && rDate < filterDataIni) return false;
+    if (filterDataFim && rDate > filterDataFim) return false;
+    if (filterDiaSemana !== '' && String(rDate.getDay()) !== filterDiaSemana) return false;
+    return true;
+  });
+}
+
+function applyFilters() {
+  filterVeiculo = document.getElementById('filter-veiculo').value;
+  filterTipo = document.getElementById('filter-tipo').value;
+  filterDataIni = inputToDate(document.getElementById('filter-data-ini').value);
+  filterDataFim = inputToDate(document.getElementById('filter-data-fim').value);
+  filterDiaSemana = document.getElementById('filter-diasemana').value;
+  updateAll();
+}
+
+function clearDateFilter() {
+  const dias = [...new Set(allRecords.map(r => r.data))].sort((a,b) => parseDate(a)-parseDate(b));
+  if (!dias.length) return;
+  document.getElementById('filter-data-ini').value = toInputDate(dias[0]);
+  document.getElementById('filter-data-fim').value = toInputDate(dias[dias.length-1]);
+  applyFilters();
+}
+
+function clearCmpDateFilter() {
+  const dias = [...new Set(allRecords.map(r => r.data))].sort((a,b) => parseDate(a)-parseDate(b));
+  if (!dias.length) return;
+  document.getElementById('cmp-data-ini').value = toInputDate(dias[0]);
+  document.getElementById('cmp-data-fim').value = toInputDate(dias[dias.length-1]);
+  renderComparativo();
+}
+
+function setCmpPeriod(days) {
+  const dias = [...new Set(allRecords.map(r => r.data))].sort((a,b) => parseDate(a)-parseDate(b));
+  if (!dias.length) return;
+  const fim = dias[dias.length-1];
+  const fimDate = parseDate(fim);
+  const iniDate = new Date(fimDate);
+  iniDate.setDate(iniDate.getDate() - (days - 1));
+  // Find earliest available date >= iniDate
+  const iniStr = toInputDate(dias.find(d => parseDate(d) >= iniDate) || dias[0]);
+  document.getElementById('cmp-data-ini').value = iniStr;
+  document.getElementById('cmp-data-fim').value = toInputDate(fim);
+  renderComparativo();
+}
+
+function updateAll() {
+  renderMetrics();
+  renderCharts();
+  renderRanking();
+  renderFrota();
+  renderSemanal();
+  renderAlertas();
+  renderStatusBar();
+  renderChartDiaSemana();
+  if (currentView === 'comparativo') renderComparativo();
+  if (currentView === 'semanas') renderSemanas();
+}
+
+// ─── METRICS ──────────────────────────────────────────────────────────
+function renderMetrics() {
+  const rec = filteredRecords();
+  const kmTotal = rec.reduce((a,r) => a + r.kmRodados, 0);
+  const custoTotal = rec.reduce((a,r) => a + r.valor, 0);
+  const litrosTotal = rec.reduce((a,r) => a + r.litros, 0);
+  const recComKm = rec.filter(r => r.kmRodados > 0);
+  const custoMedKm = recComKm.length ? recComKm.reduce((a,r) => a + r.custoPorKm, 0) / recComKm.length : 0;
+
+  document.getElementById('m-km-total').textContent = kmTotal.toLocaleString('pt-BR', {maximumFractionDigits:0}) + ' km';
+  document.getElementById('m-custo-total').textContent = 'R$ ' + custoTotal.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('m-litros-total').textContent = litrosTotal.toLocaleString('pt-BR', {maximumFractionDigits:1}) + ' L';
+  document.getElementById('m-custo-km').textContent = 'R$ ' + custoMedKm.toFixed(2);
+}
+
+// ─── CHARTS ───────────────────────────────────────────────────────────
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function renderCharts() {
+  renderChartKm();
+  renderChartTipo();
+  renderChartDiario();
+}
+
+function renderChartKm() {
+  destroyChart('kmv');
+  const rec = filteredRecords();
+  const veiculos = [...new Set(rec.map(r => r.veiculo))];
+  const data = veiculos.map(v => rec.filter(r => r.veiculo === v).reduce((a,r) => a + r.kmRodados, 0));
+  const ctx = document.getElementById('chartKmVeiculo').getContext('2d');
+  charts['kmv'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: veiculos.map(v => v.length > 14 ? v.substring(0,14)+'…' : v),
+      datasets: [{
+        label: 'KM Rodados',
+        data: data,
+        backgroundColor: veiculos.map((_,i) => COLORS[i % COLORS.length] + 'cc'),
+        borderColor: veiculos.map((_,i) => COLORS[i % COLORS.length]),
+        borderWidth: 1,
+        borderRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8b91a8', font: { size: 11 }, maxRotation: 30 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8b91a8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+function renderChartTipo() {
+  destroyChart('tipo');
+  const rec = filteredRecords();
+  const tipos = [...new Set(rec.map(r => r.tipo))];
+  const data = tipos.map(t => rec.filter(r => r.tipo === t).reduce((a,r) => a + r.custoPorKm, 0));
+  const total = data.reduce((a,v) => a+v, 0);
+  const ctx = document.getElementById('chartTipo').getContext('2d');
+  charts['tipo'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: tipos,
+      datasets: [{
+        data: data,
+        backgroundColor: tipos.map((_,i) => COLORS[i % COLORS.length] + 'cc'),
+        borderColor: '#141720',
+        borderWidth: 3,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: { legend: { display: false } }
+    }
+  });
+  // Custom legend
+  const leg = document.getElementById('legend-tipo');
+  leg.innerHTML = tipos.map((t,i) => {
+    const pct = total > 0 ? ((data[i]/total)*100).toFixed(1) : 0;
+    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:12px">
+      <span style="width:10px;height:10px;border-radius:2px;background:${COLORS[i%COLORS.length]};flex-shrink:0"></span>
+      <span style="color:var(--text2)">${t}</span>
+      <span style="color:var(--text);font-family:'DM Mono',monospace;margin-left:auto">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function renderChartDiario() {
+  destroyChart('diario');
+  const rec = filteredRecords();
+  const dias = [...new Set(rec.map(r => r.data))].sort((a,b) => parseDate(a)-parseDate(b));
+  const data = dias.map(d => {
+    const dayRec = rec.filter(r => r.data === d && r.kmRodados > 0);
+    return dayRec.length ? (dayRec.reduce((a,r) => a + r.custoPorKm, 0) / dayRec.length) : 0;
+  });
+  const ctx = document.getElementById('chartDiario').getContext('2d');
+  charts['diario'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dias.map(d => d.substring(0,5)),
+      datasets: [{
+        label: 'R$/km médio',
+        data: data,
+        borderColor: '#f5a623',
+        backgroundColor: 'rgba(245,166,35,0.08)',
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#f5a623',
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8b91a8', font: { size: 11 }, autoSkip: false, maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8b91a8', font: { size: 11 }, callback: v => 'R$'+v.toFixed(0) }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+// ─── RANKING ──────────────────────────────────────────────────────────
+function renderRanking() {
+  const rec = filteredRecords();
+  const veiculos = [...new Set(rec.map(r => r.veiculo))];
+  const stats = veiculos.map(v => {
+    const vr = rec.filter(r => r.veiculo === v && r.kmRodados > 0);
+    const avgCusto = vr.length ? vr.reduce((a,r)=>a+r.custoPorKm,0)/vr.length : 0;
+    const totalKm = rec.filter(r=>r.veiculo===v).reduce((a,r)=>a+r.kmRodados,0);
+    const tipo = rec.find(r=>r.veiculo===v)?.tipo || '';
+    return { v, avgCusto, totalKm, tipo };
+  }).sort((a,b) => b.avgCusto - a.avgCusto);
+
+  const el = document.getElementById('ranking-list');
+  el.innerHTML = stats.slice(0,6).map((s,i) => `
+    <li class="rank-item">
+      <span class="rank-num">${i+1}</span>
+      <div class="rank-info">
+        <div class="rank-name">${s.v}</div>
+        <div class="rank-sub">${s.tipo} · ${s.totalKm.toFixed(0)} km total</div>
+      </div>
+      <span class="rank-val" style="color:${i===0?'var(--red)':i<=1?'var(--accent)':'var(--green)'}">R$${s.avgCusto.toFixed(2)}</span>
+    </li>
+  `).join('');
+}
+
+// ─── FROTA ────────────────────────────────────────────────────────────
+function renderFrota() {
+  const frota = filterTipo ? FROTA_BASE.filter(f => f.tipo.includes(filterTipo.replace('CAMINHÃO P NOVO','').trim()) || f.tipo===filterTipo) : FROTA_BASE;
+  document.getElementById('frota-count').textContent = frota.length + ' veículos';
+  const tbody = document.querySelector('#tabela-frota tbody');
+
+  // Calc real avg kml from records
+  const avgMap = {};
+  VEICULOS.forEach(v => {
+    const vr = allRecords.filter(r => r.veiculo === v && r.kmRodados > 0 && r.litros > 0);
+    if (vr.length) {
+      const totalKm = vr.reduce((a,r) => a+r.kmRodados, 0);
+      const totalLit = vr.reduce((a,r) => a+r.litros, 0);
+      avgMap[v] = totalKm / totalLit;
+    }
+  });
+
+  tbody.innerHTML = FROTA_BASE.map(f => {
+    const typeClass = f.tipo.includes('MOTO') ? 'moto' : f.tipo.includes('CAMINHÃO') ? 'caminhao' : 'carro';
+    const realKml = avgMap[f.modelo];
+    let effClass = 'eff-avg', effLabel = 'Normal';
+    if (realKml) {
+      const diff = ((realKml - f.kml) / f.kml) * 100;
+      if (diff >= 5) { effClass = 'eff-good'; effLabel = '▲ Acima'; }
+      else if (diff < -10) { effClass = 'eff-bad'; effLabel = '▼ Abaixo'; }
+    }
+    return `<tr>
+      <td><code style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent)">${f.placa}</code></td>
+      <td>${f.modelo}</td>
+      <td style="color:var(--text2)">${f.marca}</td>
+      <td><span class="veh-type ${typeClass}">${f.tipo}</span></td>
+      <td style="color:var(--text2)">${f.ano}</td>
+      <td><span style="font-family:'DM Mono',monospace">${f.kml} km/l</span></td>
+      <td style="color:var(--text2);font-size:12px">${f.comb || '—'}</td>
+      <td style="font-family:'DM Mono',monospace">${f.tanque} L</td>
+      <td><span class="efficiency-badge ${effClass}">${effLabel}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── SEMANAL ──────────────────────────────────────────────────────────
+function renderSemanal() {
+  const rec = filteredRecords();
+  const veiculos = [...new Set(rec.map(r => r.veiculo))];
+  const tbody = document.querySelector('#tabela-semanal tbody');
+
+  const stats = veiculos.map(v => {
+    const vr = rec.filter(r => r.veiculo === v);
+    const kmTotal = vr.reduce((a,r) => a + r.kmRodados, 0);
+    const litros = vr.reduce((a,r) => a + r.litros, 0);
+    const custo = vr.reduce((a,r) => a + r.valor, 0);
+    const diasAtivos = vr.filter(r => r.kmRodados > 0).length;
+    const dias = [...new Set(vr.map(r => r.data))].length;
+    const avgDia = dias > 0 ? kmTotal / dias : 0;
+    const custoPorKm = kmTotal > 0 ? custo / kmTotal : 0;
+    const tipo = vr[0]?.tipo || '';
+    return { v, kmTotal, litros, custo, diasAtivos, avgDia, custoPorKm, tipo };
+  });
+
+  const avgKmGlobal = stats.reduce((a,s) => a + s.avgDia, 0) / (stats.length || 1);
+
+  tbody.innerHTML = stats.map(s => {
+    const isAbove = s.avgDia > avgKmGlobal * 1.2;
+    const isBelow = s.avgDia < avgKmGlobal * 0.5 && s.avgDia > 0;
+    return `<tr>
+      <td>${s.v}${isAbove ? ' <span style="color:var(--green);font-size:11px">▲</span>' : ''}${isBelow ? ' <span style="color:var(--red);font-size:11px">▼</span>' : ''}</td>
+      <td style="color:var(--text2);font-size:12px">${s.tipo}</td>
+      <td>${s.kmTotal.toFixed(1)}</td>
+      <td style="color:${s.avgDia > avgKmGlobal ? 'var(--green)' : 'var(--text2)'}">${s.avgDia.toFixed(1)}</td>
+      <td>${s.litros.toFixed(2)}</td>
+      <td>R$ ${s.custo.toFixed(2)}</td>
+      <td style="color:var(--accent)">R$ ${s.custoPorKm.toFixed(2)}</td>
+      <td>${s.diasAtivos}</td>
+    </tr>`;
+  }).join('');
+
+  // Chart semanal
+  destroyChart('semanal');
+  const ctx = document.getElementById('chartSemanal').getContext('2d');
+  const avgGlobal = stats.reduce((a,s) => a + s.avgDia, 0) / (stats.length || 1);
+  charts['semanal'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: stats.map(s => s.v.length > 12 ? s.v.substring(0,12)+'…' : s.v),
+      datasets: [
+        {
+          label: 'Média KM/dia',
+          data: stats.map(s => parseFloat(s.avgDia.toFixed(1))),
+          backgroundColor: stats.map(s => s.avgDia > avgGlobal*1.2 ? '#2dd4a0cc' : s.avgDia < avgGlobal*0.5 ? '#f05454cc' : '#5b8deecc'),
+          borderRadius: 5,
+        },
+        {
+          label: 'Meta média geral',
+          data: stats.map(() => parseFloat(avgGlobal.toFixed(1))),
+          type: 'line',
+          borderColor: '#f5a623',
+          borderDash: [5,5],
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#8b91a8', font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#8b91a8', font: { size: 11 }, maxRotation: 30 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8b91a8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+// ─── ALERTAS ──────────────────────────────────────────────────────────
+function renderAlertas() {
+  const rec = allRecords;
+  const veiculos = [...new Set(rec.map(r => r.veiculo))];
+  const alertas = [];
+
+  veiculos.forEach(v => {
+    const vr = rec.filter(r => r.veiculo === v && r.kmRodados > 0);
+    if (!vr.length) return;
+    const avgKm = vr.reduce((a,r) => a + r.kmRodados, 0) / vr.length;
+    const stdDev = Math.sqrt(vr.reduce((a,r) => a + Math.pow(r.kmRodados - avgKm, 2), 0) / vr.length);
+    const tipo = vr[0]?.tipo;
+    vr.forEach(r => {
+      if (r.kmRodados > avgKm + 2 * stdDev && stdDev > 0) {
+        alertas.push({ veiculo: v, tipo, data: r.data, kmRodados: r.kmRodados, avgKm, motivo: 'KM acima do desvio padrão', severity: 'alta' });
+      }
+    });
+    // High cost per km
+    const custoAlto = vr.filter(r => r.custoPorKm > 500);
+    custoAlto.forEach(r => {
+      alertas.push({ veiculo: v, tipo, data: r.data, custoPorKm: r.custoPorKm, motivo: `Custo/km elevado: R$ ${r.custoPorKm.toFixed(2)}`, severity: 'media' });
+    });
+  });
+
+  document.getElementById('alert-count').textContent = alertas.length;
+
+  const container = document.getElementById('alertas-lista');
+  if (!alertas.length) {
+    container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text3)">✓ Nenhum alerta no período monitorado</div>`;
+    return;
+  }
+  container.innerHTML = alertas.map(a => `
+    <div class="card" style="margin-bottom:12px;border-left:3px solid ${a.severity==='alta'?'var(--red)':'var(--accent)'}">
+      <div style="display:flex;align-items:center;gap:12px;justify-content:space-between">
+        <div>
+          <div style="font-weight:600;font-size:14px">${a.veiculo} <span style="color:var(--text3);font-weight:400;font-size:12px">· ${a.tipo}</span></div>
+          <div style="color:var(--text2);font-size:13px;margin-top:4px">${a.motivo}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${a.data}</div>
+          <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:${a.severity==='alta'?'rgba(240,84,84,0.15)':'rgba(245,166,35,0.15)'};color:${a.severity==='alta'?'var(--red)':'var(--accent)'}">${a.severity.toUpperCase()}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  // Alert banner no dashboard
+  const bannerEl = document.getElementById('alert-container');
+  if (alertas.length) {
+    bannerEl.innerHTML = `<div class="alert-banner"><span class="alert-badge">${alertas.length} ALERTAS</span> Existem veículos com consumo fora do padrão. <a href="#" onclick="showView('alertas');return false" style="color:var(--accent);margin-left:4px">Ver detalhes →</a></div>`;
+  }
+}
+
+// ─── COMPARATIVO ──────────────────────────────────────────────────────
+function renderComparativo() {
+  const vA = document.getElementById('cmp-a').value;
+  const vB = document.getElementById('cmp-b').value;
+  if (!vA || !vB) return;
+
+  const cmpIni = inputToDate(document.getElementById('cmp-data-ini').value);
+  const cmpFim = inputToDate(document.getElementById('cmp-data-fim').value);
+
+  const cmpFilter = r => {
+    const d = parseDate(r.data);
+    if (cmpIni && d < cmpIni) return false;
+    if (cmpFim && d > cmpFim) return false;
+    return true;
+  };
+
+  // Period info label
+  const infoEl = document.getElementById('cmp-period-info');
+  if (cmpIni || cmpFim) {
+    const fmt = d => d ? d.toLocaleDateString('pt-BR') : '?';
+    infoEl.innerHTML = `<span style="background:rgba(245,166,35,0.12);color:var(--accent);padding:3px 10px;border-radius:5px;font-size:11.5px">📅 Período: ${fmt(cmpIni)} → ${fmt(cmpFim)}</span>`;
+  } else {
+    infoEl.innerHTML = '';
+  }
+
+  const calcStats = v => {
+    const vr = allRecords.filter(r => r.veiculo === v && cmpFilter(r));
+    const km = vr.reduce((a,r) => a + r.kmRodados, 0);
+    const lit = vr.reduce((a,r) => a + r.litros, 0);
+    const custo = vr.reduce((a,r) => a + r.valor, 0);
+    const diasUniq = [...new Set(vr.map(r => r.data))];
+    const dias = diasUniq.length;
+    const avgKm = dias > 0 ? km / dias : 0;
+    const ativos = vr.filter(r=>r.kmRodados>0);
+    const avgCusto = ativos.length ? ativos.reduce((a,r)=>a+r.custoPorKm,0)/ativos.length : 0;
+    const tipo = vr[0]?.tipo || allRecords.find(r=>r.veiculo===v)?.tipo || '';
+    return { v, km, lit, custo, avgKm, avgCusto, tipo, dias };
+  };
+
+  const sA = calcStats(vA), sB = calcStats(vB);
+
+  const cmpCard = (s, other) => `
+    <div class="card" style="border-top:3px solid ${s.v===sA.v?'var(--blue)':'var(--green)'}">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:4px">${s.tipo}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:16px">${s.v}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${[
+          ['KM Total', s.km.toFixed(0)+' km', s.km > other.km],
+          ['Média KM/dia', s.avgKm.toFixed(1)+' km', s.avgKm > other.avgKm],
+          ['Litros Abastecidos', s.lit.toFixed(2)+' L', s.lit < other.lit],
+          ['Custo Total', 'R$ '+s.custo.toFixed(2), s.custo < other.custo],
+          ['R$/km Médio', 'R$ '+s.avgCusto.toFixed(2), s.avgCusto < other.avgCusto],
+          ['Dias Monitorados', s.dias+' dias', null],
+        ].map(([label, val, better]) => `
+          <div style="background:var(--bg3);border-radius:8px;padding:12px">
+            <div style="font-size:10.5px;color:var(--text3);margin-bottom:4px">${label}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:15px;color:${better===true?'var(--green)':better===false?'var(--red)':'var(--text)'}">${val}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('cmp-cards').innerHTML = cmpCard(sA,sB) + cmpCard(sB,sA);
+
+  // Chart comparativo — use only days within cmp range
+  destroyChart('cmp');
+  const diasAll = [...new Set(allRecords.map(r => r.data))].sort((a,b) => parseDate(a)-parseDate(b));
+  const dias = diasAll.filter(d => {
+    const dt = parseDate(d);
+    if (cmpIni && dt < cmpIni) return false;
+    if (cmpFim && dt > cmpFim) return false;
+    return true;
+  });
+  const getKmByDay = v => dias.map(d => {
+    const r = allRecords.find(r => r.veiculo === v && r.data === d);
+    return r ? r.kmRodados : 0;
+  });
+
+  const ctx = document.getElementById('chartCmp').getContext('2d');
+  charts['cmp'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dias.map(d => d.substring(0,5)),
+      datasets: [
+        { label: vA, data: getKmByDay(vA), borderColor: '#5b8dee', backgroundColor: 'rgba(91,141,238,0.08)', fill: true, tension: 0.3, pointRadius: 3 },
+        { label: vB, data: getKmByDay(vB), borderColor: '#2dd4a0', backgroundColor: 'rgba(45,212,160,0.08)', fill: true, tension: 0.3, pointRadius: 3, borderDash: [4,2] },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#8b91a8', font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#8b91a8', font: { size: 11 }, autoSkip: false, maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8b91a8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+// ─── STATUS BAR ───────────────────────────────────────────────────────
+function renderStatusBar() {
+  const rec = filteredRecords();
+  const datas = [...new Set(rec.map(r => r.data))];
+  document.getElementById('status-records').textContent = rec.length + ' registros';
+  document.getElementById('status-vehicles').textContent = [...new Set(rec.map(r => r.veiculo))].length + ' veículos';
+  if (datas.length) {
+    datas.sort((a,b) => parseDate(a)-parseDate(b));
+    document.getElementById('status-period').textContent = datas[0] + ' → ' + datas[datas.length-1];
+  }
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────
+const viewTitles = { dashboard:'Dashboard', frota:'Frota Geral', comparativo:'Comparativo', semanal:'Relatório Semanal', semanas:'Semana a Semana', abastecimentos:'Abastecimentos', alertas:'Alertas' };
+
+function showView(id) {
+  currentView = id;
+  document.querySelectorAll('[id^="view-"]').forEach(v => v.style.display = 'none');
+  document.getElementById('view-' + id).style.display = '';
+  document.getElementById('view-title').textContent = viewTitles[id] || id;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.trim().toLowerCase().startsWith(viewTitles[id]?.toLowerCase()?.split(' ')[0]?.toLowerCase())) {
+      n.classList.add('active');
+    }
+  });
+  if (id === 'comparativo') renderComparativo();
+  if (id === 'semanas') { buildSwSelector(); renderSemanas(); }
+  if (id === 'abastecimentos') renderAbastecimentos();
+}
+
+// ─── IMPORT ───────────────────────────────────────────────────────────
+function openModal() { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); pendingCSV = null; document.getElementById('upload-text').textContent = 'Clique ou arraste o arquivo CSV aqui'; document.getElementById('btn-import').disabled = true; }
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const parsed = parseCSV(text);
+    if (parsed.length) {
+      pendingCSV = parsed;
+      document.getElementById('upload-text').textContent = `✓ ${file.name} — ${parsed.length} registros detectados`;
+      document.getElementById('btn-import').disabled = false;
+    } else {
+      document.getElementById('upload-text').textContent = '✗ Não foi possível detectar registros válidos neste CSV';
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function splitCSVLine(line) {
+  const result = []; let current = ''; let inQ = false;
+  for (const ch of line) {
+    if (ch === '"') inQ = !inQ;
+    else if (ch === ',' && !inQ) { result.push(current.trim()); current = ''; }
+    else current += ch;
+  }
+  result.push(current.trim());
+  return result;
+}
+
+// Robust number parser: handles "1.234,5" "1234,5" "R$ 1.234,56" "1,234.5" formats
+function parseBRNum(s) {
+  if (!s) return 0;
+  s = s.replace(/R\$\s*/g,'').trim();
+  // if contains both . and ,  → BR format "1.234,56"
+  if (s.includes('.') && s.includes(',')) s = s.replace(/\./g,'').replace(',','.');
+  else if (s.includes(',') && !s.includes('.')) s = s.replace(',','.');
+  else s = s.replace(/\./g,''); // thousands dots only
+  return parseFloat(s) || 0;
+}
+
+function parseCSV(text) {
+  // Normalize line endings
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').map(l=>l.trim()).filter(l=>l);
+  const records = [];
+  let headerIdx = -1;
+  lines.forEach((line, i) => {
+    const low = line.toLowerCase();
+    if (low.includes('data') && (low.includes('km atual') || low.includes('km rodados'))) headerIdx = i;
+  });
+  if (headerIdx < 0) return [];
+
+  const headers = splitCSVLine(lines[headerIdx]).map(h => h.trim().toLowerCase().replace(/[""]/g,''));
+
+  const get = (cells, ...keys) => {
+    for (const k of keys) {
+      const idx = headers.findIndex(h => h.includes(k));
+      if (idx >= 0) return (cells[idx] || '').trim();
+    }
+    return '';
+  };
+
+  // Also try to parse the frota block (first rows) to update prices
+  // We'll parse ONLY the data records block here
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const cells = splitCSVLine(lines[i]);
+    if (cells.length < 3) continue;
+    const data = get(cells, 'data');
+    if (!data || !data.match(/^\d{2}\/\d{2}\/\d{4}$/)) continue;
+
+    const veiculo    = get(cells, 'veículo','veiculo');
+    const tipo       = get(cells, 'tipo');
+    const kmAtual    = parseBRNum(get(cells, 'km atual'));
+    const kmRodados  = parseBRNum(get(cells, 'km rodados'));
+    const litros     = parseBRNum(get(cells, 'litros abastecidos'));
+    const valor      = parseBRNum(get(cells, 'valor final','valor'));
+    // R$ por KM: strip "R$ " prefix
+    const custoPorKm = parseBRNum(get(cells, 'r$ por km','custo/km','por km'));
+
+    if (!veiculo) continue;
+    records.push({ data, veiculo, tipo, kmAtual, kmRodados, litros, valor, custoPorKm });
+  }
+  return records;
+}
+
+function importData() {
+  if (!pendingCSV || !pendingCSV.length) return;
+
+  // Strategy: REPLACE existing records for the same date+veiculo pairs that exist in the import,
+  // and ADD records for new date+veiculo pairs. This ensures corrections always win.
+  const importKeys = new Set(pendingCSV.map(r => r.data+'|'+r.veiculo));
+
+  // Remove records that will be replaced
+  const kept = allRecords.filter(r => !importKeys.has(r.data+'|'+r.veiculo));
+  const added   = pendingCSV.filter(r => !allRecords.some(e => e.data===r.data && e.veiculo===r.veiculo));
+  const updated = pendingCSV.filter(r =>  allRecords.some(e => e.data===r.data && e.veiculo===r.veiculo));
+
+  allRecords = [...kept, ...pendingCSV];
+  // Sort chronologically
+  allRecords.sort((a,b) => parseDate(a.data) - parseDate(b.data));
+
+  closeModal();
+
+  // Rebuild VEICULOS list (preserving existing order, adding new ones)
+  VEICULOS.length = 0;
+  [...new Set(allRecords.map(r => r.veiculo))].forEach(v => VEICULOS.push(v));
+
+  // Reset date filters to full range so new weeks are visible
+  filterDataIni = null;
+  filterDataFim = null;
+  document.getElementById('filter-data-ini').value = '';
+  document.getElementById('filter-data-fim').value = '';
+
+  populateFilters();
+  buildSwSelector();
+  updateAll();
+
+  const msg = `✓ Importação concluída!\n\n• ${added.length} registros novos adicionados\n• ${updated.length} registros atualizados/corrigidos\n• Total na base: ${allRecords.length} registros`;
+  alert(msg);
+}
+
+// ─── ABASTECIMENTOS ────────────────────────────────────────────────────
+function renderAbastecimentos() {
+  const filtroV = document.getElementById('abast-filter-veiculo').value;
+  const veiculosAll = [...new Set(allRecords.map(r => r.veiculo))];
+  const veiculos = filtroV ? [filtroV] : veiculosAll;
+
+  // Build per-vehicle abastecimento data: dates where litros > 0
+  const dados = veiculos.map(v => {
+    const recs = allRecords
+      .filter(r => r.veiculo === v && r.litros > 0)
+      .sort((a,b) => parseDate(a.data) - parseDate(b.data));
+    const tipo = allRecords.find(r => r.veiculo === v)?.tipo || '';
+
+    const datas = recs.map(r => r.data);
+    const intervalos = [];
+    for (let i = 1; i < datas.length; i++) {
+      const diff = Math.round((parseDate(datas[i]) - parseDate(datas[i-1])) / 86400000);
+      intervalos.push(diff);
+    }
+    const mediaIntervalo = intervalos.length ? intervalos.reduce((a,b)=>a+b,0) / intervalos.length : null;
+    const minIntervalo   = intervalos.length ? Math.min(...intervalos) : null;
+    const maxIntervalo   = intervalos.length ? Math.max(...intervalos) : null;
+    const totalLitros    = recs.reduce((a,r) => a + r.litros, 0);
+    const totalValor     = recs.reduce((a,r) => a + r.valor, 0);
+
+    return { v, tipo, recs, datas, intervalos, mediaIntervalo, minIntervalo, maxIntervalo, totalLitros, totalValor, qtdAbast: recs.length };
+  });
+
+  // ── KPI strip (aggregate or single-vehicle) ───────────────────────────
+  const totalAbast   = dados.reduce((a,d) => a + d.qtdAbast, 0);
+  const comIntervalo  = dados.filter(d => d.mediaIntervalo !== null);
+  const mediaGeral    = comIntervalo.length ? comIntervalo.reduce((a,d) => a + d.mediaIntervalo, 0) / comIntervalo.length : 0;
+  const maisFrequente = comIntervalo.length ? comIntervalo.reduce((a,b) => a.mediaIntervalo < b.mediaIntervalo ? a : b) : null;
+  const menosFrequente= comIntervalo.length ? comIntervalo.reduce((a,b) => a.mediaIntervalo > b.mediaIntervalo ? a : b) : null;
+
+  document.getElementById('abast-kpis').innerHTML = `
+    <div class="metric-card accent">
+      <div class="metric-label">Total de Abastecimentos</div>
+      <div class="metric-value">${totalAbast}</div>
+      <div class="metric-sub">${filtroV ? '1 veículo selecionado' : veiculosAll.length+' veículos'}</div>
+    </div>
+    <div class="metric-card blue">
+      <div class="metric-label">Intervalo Médio Geral</div>
+      <div class="metric-value">${mediaGeral.toFixed(1)} dias</div>
+      <div class="metric-sub">Entre abastecimentos</div>
+    </div>
+    <div class="metric-card green">
+      <div class="metric-label">Mais Frequente</div>
+      <div class="metric-value" style="font-size:18px">${maisFrequente ? maisFrequente.v : '—'}</div>
+      <div class="metric-sub">${maisFrequente ? maisFrequente.mediaIntervalo.toFixed(1)+' dias em média' : ''}</div>
+    </div>
+    <div class="metric-card red">
+      <div class="metric-label">Menos Frequente</div>
+      <div class="metric-value" style="font-size:18px">${menosFrequente ? menosFrequente.v : '—'}</div>
+      <div class="metric-sub">${menosFrequente ? menosFrequente.mediaIntervalo.toFixed(1)+' dias em média' : ''}</div>
+    </div>
+  `;
+
+  // ── Interval chart: avg interval per vehicle ──────────────────────────
+  destroyChart('intervalo');
+  const chartData = dados.filter(d => d.mediaIntervalo !== null);
+  const ctx = document.getElementById('chartIntervalo').getContext('2d');
+  const globalAvg = mediaGeral;
+  charts['intervalo'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: chartData.map(d => d.v.length > 14 ? d.v.substring(0,14)+'…' : d.v),
+      datasets: [{
+        label: 'Intervalo médio (dias)',
+        data: chartData.map(d => parseFloat(d.mediaIntervalo.toFixed(1))),
+        backgroundColor: chartData.map(d => d.mediaIntervalo > globalAvg*1.3 ? '#f05454cc' : d.mediaIntervalo < globalAvg*0.7 ? '#2dd4a0cc' : '#5b8deecc'),
+        borderColor: chartData.map(d => d.mediaIntervalo > globalAvg*1.3 ? '#f05454' : d.mediaIntervalo < globalAvg*0.7 ? '#2dd4a0' : '#5b8dee'),
+        borderWidth: 1, borderRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8b91a8', font: { size: 11 }, maxRotation: 30 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8b91a8', font: { size: 11 }, callback: v => v+'d' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  // ── Per-vehicle detail cards ──────────────────────────────────────────
+  const typeClassOf = tipo => tipo.includes('MOTO') ? 'moto' : tipo.includes('CAMINHÃO') ? 'caminhao' : 'carro';
+
+  document.getElementById('abast-detail').innerHTML = dados.map((d,i) => {
+    const col = COLORS[i % COLORS.length];
+    const tc  = typeClassOf(d.tipo);
+
+    // Build the day-by-day list with gaps highlighted
+    const rows = d.datas.map((data, idx) => {
+      const gap = idx > 0 ? d.intervalos[idx-1] : null;
+      const rec = d.recs[idx];
+      let gapColor = 'var(--text2)';
+      let gapTag = '';
+      if (gap !== null) {
+        if (gap > d.mediaIntervalo * 1.4) { gapColor = 'var(--red)'; gapTag = ' ▲ acima da média'; }
+        else if (gap < d.mediaIntervalo * 0.6) { gapColor = 'var(--green)'; gapTag = ' ▼ abaixo da média'; }
+      }
+      return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);width:18px;text-align:right">${idx+1}</span>
+        <div style="flex:1">
+          <span style="font-size:13px;font-weight:500">${data}</span>
+          <span style="font-size:11.5px;color:var(--text2);margin-left:8px">${rec.litros.toFixed(2)} L · R$ ${rec.valor.toFixed(2)}</span>
+        </div>
+        ${gap !== null
+          ? `<span style="font-family:'DM Mono',monospace;font-size:12px;color:${gapColor};white-space:nowrap">+${gap}d${gapTag}</span>`
+          : `<span style="font-size:11px;color:var(--text3)">início</span>`}
+      </div>`;
+    }).join('');
+
+    return `<div class="card" style="margin-bottom:18px;border-left:3px solid ${col}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div>
+          <span class="veh-type ${tc}" style="margin-right:8px">${d.tipo}</span>
+          <span style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700">${d.v}</span>
+        </div>
+        <div style="display:flex;gap:18px;flex-wrap:wrap">
+          <div style="text-align:right">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase">Abastecimentos</div>
+            <div style="font-family:'DM Mono',monospace;font-size:14px">${d.qtdAbast}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase">Intervalo médio</div>
+            <div style="font-family:'DM Mono',monospace;font-size:14px;color:var(--accent)">${d.mediaIntervalo!==null ? d.mediaIntervalo.toFixed(1)+' dias' : '—'}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase">Min / Máx</div>
+            <div style="font-family:'DM Mono',monospace;font-size:14px">${d.minIntervalo!==null ? d.minIntervalo+'d / '+d.maxIntervalo+'d' : '—'}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase">Total Litros</div>
+            <div style="font-family:'DM Mono',monospace;font-size:14px">${d.totalLitros.toFixed(1)} L</div>
+          </div>
+        </div>
+      </div>
+      ${d.qtdAbast > 0
+        ? `<div style="max-height:260px;overflow-y:auto">${rows}</div>`
+        : `<div style="color:var(--text3);font-size:13px;padding:14px 0;text-align:center">Nenhum abastecimento com litros registrados para este veículo</div>`}
+    </div>`;
+  }).join('');
+}
+
+// ─── DIA DA SEMANA ────────────────────────────────────────────────────
+function renderChartDiaSemana() {
+  destroyChart('diasemana');
+  const rec = filteredRecords();
+  const NOMES = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const kmPorDia = Array(7).fill(0);
+  const veiculosPorDia = Array.from({length:7}, () => ({}));
+
+  rec.forEach(r => {
+    const dow = parseDate(r.data).getDay();
+    kmPorDia[dow] += r.kmRodados;
+    if (r.kmRodados > 0) {
+      veiculosPorDia[dow][r.veiculo] = (veiculosPorDia[dow][r.veiculo] || 0) + r.kmRodados;
+    }
+  });
+
+  const maxKm = Math.max(...kmPorDia, 1);
+  const ctx = document.getElementById('chartDiaSemana').getContext('2d');
+  charts['diasemana'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: NOMES,
+      datasets: [{
+        label: 'KM Rodados',
+        data: kmPorDia.map(v => parseFloat(v.toFixed(1))),
+        backgroundColor: kmPorDia.map(v => v === maxKm ? '#f5a623cc' : '#5b8deecc'),
+        borderColor: kmPorDia.map(v => v === maxKm ? '#f5a623' : '#5b8dee'),
+        borderWidth: 1,
+        borderRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8b91a8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8b91a8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  // Ranking por dia
+  const el = document.getElementById('diasemana-ranking');
+  const diasAtivos = NOMES.map((nome, i) => ({ nome, km: kmPorDia[i], veiculos: veiculosPorDia[i] }))
+    .filter(d => d.km > 0)
+    .sort((a,b) => b.km - a.km);
+
+  el.innerHTML = diasAtivos.slice(0,5).map((d, i) => {
+    const topVei = Object.entries(d.veiculos).sort((a,b)=>b[1]-a[1])[0];
+    const isTop = i === 0;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);width:18px;text-align:right">${i+1}</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500;color:${isTop?'var(--accent)':'var(--text)'}">${d.nome} ${isTop?'<span style="font-size:10px;background:rgba(245,166,35,0.15);color:var(--accent);padding:1px 6px;border-radius:4px">+ ativo</span>':''}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${topVei ? 'Maior uso: ' + topVei[0] + ' · ' + topVei[1].toFixed(0) + ' km' : ''}</div>
+      </div>
+      <span style="font-family:'DM Mono',monospace;font-size:13px;color:${isTop?'var(--accent)':'var(--text2)'}">${d.km.toFixed(0)} km</span>
+    </div>`;
+  }).join('') + (diasAtivos.length === 0 ? '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">Sem dados no filtro atual</div>' : '');
+}
+
+// ─── SEMANA A SEMANA ──────────────────────────────────────────────────
+
+// Group all records into Mon-Sat "weeks". Returns array of { label, weekKey, days: [dd/mm/yyyy,...] }
+function buildWeeks() {
+  const allDates = [...new Set(allRecords.map(r => r.data))]
+    .sort((a,b) => parseDate(a)-parseDate(b));
+  const weeks = {};
+  allDates.forEach(d => {
+    const dt = parseDate(d);
+    const dow = dt.getDay(); // 0=Sun
+    // Week anchor = most recent Monday on or before this date
+    const diff = dow === 0 ? 6 : dow - 1; // days since Monday
+    const mon = new Date(dt); mon.setDate(dt.getDate() - diff);
+    const key = toInputDate(fmtDate(mon));
+    if (!weeks[key]) weeks[key] = { key, monDate: new Date(mon), days: [] };
+    weeks[key].days.push(d);
+  });
+  // Sort by week key and filter: keep only weeks that have Mon-Sat data (at least some days Seg-Sab, i.e. dow 1-6)
+  return Object.values(weeks)
+    .sort((a,b) => a.monDate - b.monDate)
+    .map((w, i) => {
+      const sat = new Date(w.monDate); sat.setDate(sat.getDate() + 5);
+      const label = `Semana ${i+1}: ${fmtDate(w.monDate)} → ${fmtDate(sat)}`;
+      return { ...w, label, idx: i };
+    });
+}
+
+function fmtDate(d) {
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+function weekStats(weekDays, veiculo) {
+  // Seg–Sáb only (dow 1–6)
+  const segSab = weekDays.filter(d => { const dw = parseDate(d).getDay(); return dw >= 1 && dw <= 6; });
+  const recs     = allRecords.filter(r => segSab.includes(r.data) && (!veiculo || r.veiculo === veiculo));
+  const ativos   = recs.filter(r => r.kmRodados > 0);
+  const kmTotal  = recs.reduce((a,r)  => a + r.kmRodados, 0);
+  const litros   = recs.reduce((a,r)  => a + r.litros,    0);
+  const custo    = recs.reduce((a,r)  => a + r.valor,     0);
+  const qtdDias  = [...new Set(ativos.map(r => r.data))].length;
+  const avgKmDia = qtdDias > 0 ? kmTotal / qtdDias : 0;
+  const custoPKm = kmTotal > 0 ? custo / kmTotal    : 0;
+  // per-day km map  { 'dd/mm/yyyy': totalKm }
+  const kmByDay  = {};
+  segSab.forEach(d => { kmByDay[d] = recs.filter(r=>r.data===d).reduce((a,r)=>a+r.kmRodados,0); });
+  return { kmTotal, litros, custo, avgKmDia, custoPKm, qtdDias, recs, segSab, kmByDay };
+}
+
+function buildSwSelector() {
+  const sel = document.getElementById('sw-select-semana');
+  const weeks = buildWeeks();
+  sel.innerHTML = '';
+  weeks.forEach((w, i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = w.label;
+    sel.appendChild(o);
+  });
+  if (weeks.length > 0) sel.value = weeks.length - 1;
+}
+
+function renderSemanas() {
+  const weeks = buildWeeks();
+  if (!weeks.length) return;
+  const sel = document.getElementById('sw-select-semana');
+  if (!sel.options.length) buildSwSelector();
+  const idx  = parseInt(sel.value) || (weeks.length - 1);
+  const wCur = weeks[Math.min(idx, weeks.length-1)];
+  const wAnt = idx > 0 ? weeks[idx-1] : null;
+
+  const NOMES_DIA   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const VEICULOS_ALL = [...new Set(allRecords.map(r => r.veiculo))];
+  const CAMINHOES   = [...new Set(allRecords.filter(r => r.tipo.includes('CAMINHÃO')).map(r => r.veiculo))];
+  const MOTOS       = [...new Set(allRecords.filter(r => r.tipo === 'MOTO').map(r => r.veiculo))];
+
+  document.getElementById('sw-subtitle').textContent =
+    `Seg → Sáb · ${wCur.label}${wAnt ? '  vs  ' + wAnt.label : ' (sem semana anterior)'}`;
+  document.getElementById('sw-week-label').textContent = wCur.label;
+
+  // ── helpers ──────────────────────────────────────────────────────────
+  const delta = (a, b) => (b && b !== 0) ? ((a - b) / b) * 100 : null;
+  const deltaCell = (cur, ant, inv, decimals=1, prefix='', suffix='') => {
+    if (ant === null || ant === undefined) return `<td style="text-align:right;color:var(--text3)">—</td>`;
+    const d = cur - ant;
+    const up = inv ? d < 0 : d > 0;
+    const col = d === 0 ? 'var(--text3)' : up ? 'var(--green)' : 'var(--red)';
+    const sign = d > 0 ? '+' : '';
+    return `<td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px;color:${col}">${sign}${prefix}${d.toFixed(decimals)}${suffix}</td>`;
+  };
+  const pctTag = (pct, inv) => {
+    if (pct === null) return '';
+    const up = inv ? pct < 0 : pct > 0;
+    const col = up ? 'var(--green)' : 'var(--red)';
+    const arrow = up ? '▲' : '▼';
+    return `<span style="font-size:11px;font-weight:700;color:${col}">${arrow} ${Math.abs(pct).toFixed(1)}%</span>`;
+  };
+
+  // ── KPI STRIP ─────────────────────────────────────────────────────────
+  const cur = weekStats(wCur.days);
+  const ant = wAnt ? weekStats(wAnt.days) : null;
+
+  const kpis = [
+    { label:'KM Total (Seg–Sáb)', curV: cur.kmTotal,   antV: ant?.kmTotal,   fmt: v=>v.toFixed(0)+' km',   inv:false },
+    { label:'Média KM/dia',        curV: cur.avgKmDia,  antV: ant?.avgKmDia,  fmt: v=>v.toFixed(1)+' km',   inv:false },
+    { label:'Qtd dias ativos',     curV: cur.qtdDias,   antV: ant?.qtdDias,   fmt: v=>v+' dias',            inv:false },
+    { label:'Litros Consumidos',   curV: cur.litros,    antV: ant?.litros,    fmt: v=>v.toFixed(1)+' L',    inv:true  },
+    { label:'Custo Total',         curV: cur.custo,     antV: ant?.custo,     fmt: v=>'R$ '+v.toFixed(2),   inv:true  },
+  ];
+  document.getElementById('sw-kpis').innerHTML = kpis.map(k => {
+    const pct = ant ? delta(k.curV, k.antV) : null;
+    const up  = pct === null ? null : k.inv ? pct < 0 : pct > 0;
+    const colorClass = up === null ? 'blue' : up ? 'green' : 'red';
+    return `<div class="metric-card ${colorClass}" style="padding:16px 18px">
+      <div class="metric-label" style="font-size:10px">${k.label}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:500;margin:6px 0;line-height:1.2">${k.fmt(k.curV)}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap">
+        <div style="font-size:11px;color:var(--text3)">${ant ? 'Ant: '+k.fmt(k.antV) : 'Sem anterior'}</div>
+        ${pctTag(pct, k.inv)}
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── KM DIÁRIO OVERLAY (semana atual + anterior sobrepostas) ───────────
+  destroyChart('swChartOverlay');
+  const buildDayLabels = (weekObj) => {
+    const days = ['Seg','Ter','Qua','Qui','Sex','Sáb'];
+    return days; // fixed x-axis
+  };
+  const dowIndex = {'1':0,'2':1,'3':2,'4':3,'5':4,'6':5}; // Mon=0..Sat=5
+  const kmByDow = (weekObj) => {
+    const arr = [0,0,0,0,0,0];
+    if (!weekObj) return arr;
+    Object.entries(weekObj.days.reduce((acc, d) => {
+      const dw = parseDate(d).getDay();
+      if (dw >= 1 && dw <= 6) {
+        const km = allRecords.filter(r=>r.data===d).reduce((a,r)=>a+r.kmRodados,0);
+        acc[dw] = (acc[dw]||0) + km;
+      }
+      return acc;
+    }, {})).forEach(([dw,km]) => { arr[dw-1] = km; });
+    return arr;
+  };
+  const curDow = kmByDow(wCur);
+  const antDow = kmByDow(wAnt);
+  const ctxOv = document.getElementById('swChartOverlay').getContext('2d');
+  charts['swChartOverlay'] = new Chart(ctxOv, {
+    type: 'bar',
+    data: {
+      labels: ['Seg','Ter','Qua','Qui','Sex','Sáb'],
+      datasets: [
+        { label: 'Semana Atual',    data: curDow.map(v=>parseFloat(v.toFixed(1))), backgroundColor: 'rgba(245,166,35,0.75)', borderColor:'#f5a623', borderWidth:1, borderRadius:4 },
+        ...(wAnt ? [{ label: 'Semana Anterior', data: antDow.map(v=>parseFloat(v.toFixed(1))), backgroundColor: 'rgba(91,141,238,0.4)', borderColor:'#5b8dee', borderWidth:1, borderRadius:4 }] : []),
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels:{ color:'#8b91a8', font:{size:11}, boxWidth:12 } } },
+      scales: {
+        x: { ticks:{color:'#8b91a8',font:{size:12}}, grid:{color:'rgba(255,255,255,0.04)'} },
+        y: { ticks:{color:'#8b91a8',font:{size:11}}, grid:{color:'rgba(255,255,255,0.04)'} }
+      }
+    }
+  });
+
+  // ── GROUP CHART builder (KM or Litros) ────────────────────────────────
+  const buildGroupChart = (canvasId, veiculos, field) => {
+    destroyChart(canvasId);
+    const labels = veiculos.map(v => v.length>13?v.substring(0,13)+'…':v);
+    const getCur = v => { const s = weekStats(wCur.days, v); return field==='km' ? s.kmTotal : s.litros; };
+    const getAnt = v => { const s = wAnt ? weekStats(wAnt.days, v) : null; return s ? (field==='km' ? s.kmTotal : s.litros) : 0; };
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    charts[canvasId] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label:'Semana Atual',    data: veiculos.map(v=>parseFloat(getCur(v).toFixed(1))), backgroundColor: veiculos.map((_,i)=>COLORS[i%COLORS.length]+'cc'), borderColor:veiculos.map((_,i)=>COLORS[i%COLORS.length]), borderWidth:1, borderRadius:4 },
+          ...(wAnt ? [{ label:'Semana Anterior', data: veiculos.map(v=>parseFloat(getAnt(v).toFixed(1))), backgroundColor: veiculos.map((_,i)=>COLORS[i%COLORS.length]+'33'), borderColor:veiculos.map((_,i)=>COLORS[i%COLORS.length]), borderWidth:1, borderRadius:4 }] : []),
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ labels:{ color:'#8b91a8', font:{size:10}, boxWidth:10 } } },
+        scales:{
+          x:{ ticks:{color:'#8b91a8',font:{size:11}}, grid:{color:'rgba(255,255,255,0.04)'} },
+          y:{ ticks:{color:'#8b91a8',font:{size:11}}, grid:{color:'rgba(255,255,255,0.04)'} }
+        }
+      }
+    });
+  };
+
+  buildGroupChart('swChartCaminhoes',     CAMINHOES, 'km');
+  buildGroupChart('swChartCaminhoesLitros',CAMINHOES,'litros');
+  buildGroupChart('swChartMotos',          MOTOS,    'km');
+  buildGroupChart('swChartMotosLitros',    MOTOS,    'litros');
+
+  // ── CAMINHÕES DETAIL CARDS ────────────────────────────────────────────
+  const cdet = document.getElementById('sw-caminhoes-detail');
+  cdet.innerHTML = `<div style="display:grid;grid-template-columns:repeat(${Math.min(CAMINHOES.length,3)},1fr);gap:14px;padding-top:4px">` +
+    CAMINHOES.map((v,i) => {
+      const sc = weekStats(wCur.days, v);
+      const sa = wAnt ? weekStats(wAnt.days, v) : null;
+      const col = COLORS[i % COLORS.length];
+      const tipo = allRecords.find(r=>r.veiculo===v)?.tipo||'';
+      const rows = [
+        ['KM Total',    sc.kmTotal.toFixed(1)+' km',  sa?.kmTotal.toFixed(1)+' km',  delta(sc.kmTotal,  sa?.kmTotal),  false],
+        ['Méd/dia',     sc.avgKmDia.toFixed(1)+' km', sa?.avgKmDia.toFixed(1)+' km', delta(sc.avgKmDia, sa?.avgKmDia), false],
+        ['Litros',      sc.litros.toFixed(2)+' L',     sa?.litros.toFixed(2)+' L',    delta(sc.litros,   sa?.litros),   true ],
+        ['Custo',       'R$ '+sc.custo.toFixed(2),     sa?'R$ '+sa.custo.toFixed(2):'—', delta(sc.custo, sa?.custo),   true ],
+        ['R$/km',       'R$ '+sc.custoPKm.toFixed(2),  sa?'R$ '+sa.custoPKm.toFixed(2):'—', delta(sc.custoPKm,sa?.custoPKm),true],
+        ['Dias ativos', sc.qtdDias+' dias',             sa?sa.qtdDias+' dias':'—',    delta(sc.qtdDias,  sa?.qtdDias),  false],
+      ];
+      return `<div class="card" style="border-top:3px solid ${col}">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${tipo}</div>
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:14px">${v}</div>
+        ${rows.map(([lbl,cur,ant,pct,inv]) => {
+          const up   = pct===null?null : inv?pct<0:pct>0;
+          const col2 = up===null?'var(--text2)':up?'var(--green)':'var(--red)';
+          const arr  = up===null?'':up?'▲':'▼';
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:12px;color:var(--text3)">${lbl}</span>
+            <div style="text-align:right">
+              <div style="font-family:'DM Mono',monospace;font-size:12.5px">${cur}</div>
+              ${ant && ant!=='—' ? `<div style="font-size:10.5px;color:${col2}">${arr} ${pct!==null?(Math.abs(pct).toFixed(1)+'%'):''} <span style="color:var(--text3)">${ant}</span></div>` : `<div style="font-size:10.5px;color:var(--text3)">${ant||'—'}</div>`}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('') + '</div>';
+
+  // ── PER-VEHICLE TABLE ────────────────────────────────────────────────
+  const tbody = document.querySelector('#sw-table tbody');
+  tbody.innerHTML = VEICULOS_ALL.map(v => {
+    const sc   = weekStats(wCur.days, v);
+    const sa   = wAnt ? weekStats(wAnt.days, v) : null;
+    const tipo = allRecords.find(r=>r.veiculo===v)?.tipo||'';
+    const tc   = tipo.includes('MOTO')?'moto':tipo.includes('CAMINHÃO')?'caminhao':'carro';
+    return `<tr>
+      <td style="font-weight:500">${v}</td>
+      <td><span class="veh-type ${tc}">${tipo}</span></td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px">${sc.kmTotal.toFixed(1)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${sa?sa.kmTotal.toFixed(1):'—'}</td>
+      ${deltaCell(sc.kmTotal, sa?.kmTotal, false, 1, '', ' km')}
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px">${sc.avgKmDia.toFixed(1)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${sa?sa.avgKmDia.toFixed(1):'—'}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px">${sc.qtdDias}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px">${sc.litros.toFixed(2)}</td>
+      ${deltaCell(sc.litros, sa?.litros, true, 2, '', ' L')}
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px">R$ ${sc.custo.toFixed(2)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px">R$ ${sc.custoPKm.toFixed(2)}</td>
+      ${deltaCell(sc.custoPKm, sa?.custoPKm, true, 2, 'R$ ')}
+    </tr>`;
+  }).join('');
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────
+function parseDate(str) {
+  const [d,m,y] = str.split('/');
+  return new Date(+y, +m-1, +d);
+}
+
+// ─── START ────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
